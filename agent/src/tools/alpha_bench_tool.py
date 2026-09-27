@@ -601,6 +601,35 @@ def _fetch_sp500_constituents() -> tuple[list[str], dict[str, str]]:
     return [], {}
 
 
+
+def _load_nifty50_panel(start: str, end: str) -> dict[str, pd.DataFrame]:
+    """Nifty 50 panel via yfinance."""
+    codes = [
+        "RELIANCE.NS", "TCS.NS", "HDFCBANK.NS", "INFY.NS", "ICICIBANK.NS",
+        "BHARTIENT.NS", "SBIN.NS", "LICI.NS", "ITC.NS", "LT.NS",
+        "HINDUNILVR.NS", "AXISBANK.NS", "KOTAKBANK.NS", "ADANIENT.NS", "ADANIPORTS.NS",
+        "BAJFINANCE.NS", "MARUTI.NS", "SUNPHARMA.NS", "TITAN.NS", "ULTRACEMCO.NS",
+        "TATASTEEL.NS", "ONGC.NS", "NTPC.NS", "POWERGRID.NS", "M&M.NS",
+        "COALINDIA.NS", "JSWSTEEL.NS", "TATACONSUM.NS", "HINDALCO.NS", "GRASIM.NS",
+        "SBILIFE.NS", "HDFCLIFE.NS", "BAJAJFINSV.NS", "WIPRO.NS", "NESTLEIND.NS",
+        "DRREDDY.NS", "APOLLOHOSP.NS", "BRITANNIA.NS", "ASIANPAINT.NS", "DIVISLAB.NS",
+        "BPCL.NS", "CIPLA.NS", "TATAMOTORS.NS", "EICHERMOT.NS", "HEROMOTOCO.NS",
+        "INDUSINDBK.NS", "TECHM.NS", "LTIM.NS", "SHRIRAMFIN.NS", "JIOFIN.NS"
+    ]
+    from backtest.loaders.registry import resolve_loader
+    loader = resolve_loader("us_equity")
+    fetched = _retry(lambda: loader.fetch(codes, start, end)) or {}
+    panel = _wide_from_fetched(fetched, include_amount=False)
+    if all(k in panel for k in ("open", "high", "low", "close")):
+        panel["vwap"] = (panel["open"] + panel["high"] + panel["low"] + panel["close"]) / 4.0
+    panel["_meta"] = {
+        "universe": "nifty50",
+        "survivorship_bias": True,
+        "constituent_count": len(codes),
+    }
+    return panel
+
+
 def _load_btc_panel(start: str, end: str) -> dict[str, pd.DataFrame]:
     """Single-instrument BTC-USDT panel via OKX. Adds vwap = typical price."""
     from backtest.loaders.registry import resolve_loader
