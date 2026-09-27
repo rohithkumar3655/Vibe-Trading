@@ -627,7 +627,7 @@ def _load_nifty50_panel(start: str, end: str) -> dict[str, pd.DataFrame]:
         panel["vwap"] = (panel["open"] + panel["high"] + panel["low"] + panel["close"]) / 4.0
     panel["_meta"] = {
         "universe": "nifty50",
-        "survivorship_bias": False,
+        "survivorship_bias": True,
         "constituent_count": len(codes),
     }
     return panel
