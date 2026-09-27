@@ -73,6 +73,7 @@ _PERIOD_DATE = re.compile(r"^(\d{4}-\d{2}-\d{2})/(\d{4}-\d{2}-\d{2})$")
 _UNIVERSE_TAG = {
     "csi300": "equity_cn",
     "sp500": "equity_us",
+    "nifty50": "india_equity",
     "btc-usdt": "crypto",
 }
 
@@ -136,6 +137,8 @@ def _load_universe_panel(
         panel = _load_csi300_panel(start, end)
     elif universe == "sp500":
         panel = _load_sp500_panel(start, end)
+    elif universe == "nifty50":
+        panel = _load_nifty50_panel(start, end)
     elif universe == "btc-usdt":
         panel = _load_btc_panel(start, end)
     else:  # pragma: no cover — guarded above
@@ -599,6 +602,35 @@ def _fetch_sp500_constituents() -> tuple[list[str], dict[str, str]]:
     except Exception as exc:  # noqa: BLE001
         logger.warning("sp500 Wikipedia fetch failed: %s", exc)
     return [], {}
+
+
+
+def _load_nifty50_panel(start: str, end: str) -> dict[str, pd.DataFrame]:
+    """Nifty 50 panel via yfinance."""
+    codes = [
+        "RELIANCE.NS", "TCS.NS", "HDFCBANK.NS", "INFY.NS", "ICICIBANK.NS",
+        "BHARTIENT.NS", "SBIN.NS", "LICI.NS", "ITC.NS", "LT.NS",
+        "HINDUNILVR.NS", "AXISBANK.NS", "KOTAKBANK.NS", "ADANIENT.NS", "ADANIPORTS.NS",
+        "BAJFINANCE.NS", "MARUTI.NS", "SUNPHARMA.NS", "TITAN.NS", "ULTRACEMCO.NS",
+        "TATASTEEL.NS", "ONGC.NS", "NTPC.NS", "POWERGRID.NS", "M&M.NS",
+        "COALINDIA.NS", "JSWSTEEL.NS", "TATACONSUM.NS", "HINDALCO.NS", "GRASIM.NS",
+        "SBILIFE.NS", "HDFCLIFE.NS", "BAJAJFINSV.NS", "WIPRO.NS", "NESTLEIND.NS",
+        "DRREDDY.NS", "APOLLOHOSP.NS", "BRITANNIA.NS", "ASIANPAINT.NS", "DIVISLAB.NS",
+        "BPCL.NS", "CIPLA.NS", "TATAMOTORS.NS", "EICHERMOT.NS", "HEROMOTOCO.NS",
+        "INDUSINDBK.NS", "TECHM.NS", "LTIM.NS", "SHRIRAMFIN.NS", "JIOFIN.NS"
+    ]
+    from backtest.loaders.registry import resolve_loader
+    loader = resolve_loader("us_equity")
+    fetched = _retry(lambda: loader.fetch(codes, start, end)) or {}
+    panel = _wide_from_fetched(fetched, include_amount=False)
+    if all(k in panel for k in ("open", "high", "low", "close")):
+        panel["vwap"] = (panel["open"] + panel["high"] + panel["low"] + panel["close"]) / 4.0
+    panel["_meta"] = {
+        "universe": "nifty50",
+        "survivorship_bias": False,
+        "constituent_count": len(codes),
+    }
+    return panel
 
 
 def _load_btc_panel(start: str, end: str) -> dict[str, pd.DataFrame]:
